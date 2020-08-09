@@ -96,23 +96,23 @@ function intent(domSource, timeSource) {
   const DOWN_KEYCODE = 40
   const ENTER_KEYCODE = 13
   const TAB_KEYCODE = 9
-
-  const input$ = domSource.select('.autocompleteable').events('input')
-  const keydown$ = domSource.select('.autocompleteable').events('keydown')
-  const itemHover$ = domSource.select('.autocomplete-item').events('mouseenter')
+  
+  const input$         = domSource.select('.autocompleteable') .events('input')
+  const keydown$       = domSource.select('.autocompleteable') .events('keydown')
+  const itemHover$     = domSource.select('.autocomplete-item').events('mouseenter')
   const itemMouseDown$ = domSource.select('.autocomplete-item').events('mousedown')
-  const itemMouseUp$ = domSource.select('.autocomplete-item').events('mouseup')
-  const inputFocus$ = domSource.select('.autocompleteable').events('focus')
-  const inputBlur$ = domSource.select('.autocompleteable').events('blur')
+  const itemMouseUp$   = domSource.select('.autocomplete-item').events('mouseup')
+  const inputFocus$    = domSource.select('.autocompleteable') .events('focus')
+  const inputBlur$     = domSource.select('.autocompleteable') .events('blur')
 
   const enterPressed$ = keydown$.filter(({keyCode}) => keyCode === ENTER_KEYCODE)
-  const tabPressed$ = keydown$.filter(({keyCode}) => keyCode === TAB_KEYCODE)
-  const clearField$ = input$.filter(ev => ev.target.value.length === 0)
-  const inputBlurToItem$ = inputBlur$.compose(between(itemMouseDown$, itemMouseUp$))
+  const tabPressed$   = keydown$.filter(({keyCode}) => keyCode === TAB_KEYCODE)
+  const clearField$   = input$  .filter(ev => ev.target.value.length === 0)
+  const inputBlurToItem$      = inputBlur$.compose(between   (itemMouseDown$, itemMouseUp$))
   const inputBlurToElsewhere$ = inputBlur$.compose(notBetween(itemMouseDown$, itemMouseUp$))
   const itemMouseClick$ = itemMouseDown$
-    .map(down => itemMouseUp$.filter(up => down.target === up.target))
-    .flatten()
+                            .map(down => itemMouseUp$.filter(up => down.target === up.target))
+                            .flatten()
 
   return {
     search$: input$
@@ -121,10 +121,11 @@ function intent(domSource, timeSource) {
       .map(ev => ev.target.value)
       .filter(query => query.length > 0),
     moveHighlight$: keydown$
-      .map(({keyCode}) => { switch (keyCode) {
-        case UP_KEYCODE: return -1
-        case DOWN_KEYCODE: return +1
-        default: return 0
+      .map(({keyCode}) => {
+        switch (keyCode) {
+          case UP_KEYCODE:   return -1
+          case DOWN_KEYCODE: return +1
+          default:           return 0
       }})
       .filter(delta => delta !== 0),
     setHighlight$: itemHover$
@@ -279,8 +280,9 @@ function preventedEvents(actions, state$) {
   return state$
     .map(state =>
       actions.keepFocusOnInput$.map(event => {
-        if (state.get('suggestions').length > 0
-        && state.get('highlighted') !== null) {
+        if (state.get('suggestions').length > 0 &&
+            state.get('highlighted') !== null)
+        {
           return event
         } else {
           return null
