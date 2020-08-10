@@ -10,14 +10,19 @@
     "@cycle/jsonp": "7.1.0",
     "@cycle/run": "5.4.0",
     "@cycle/time": "^0.20.0",
+    "@types/browserify": "^12.0.36",
     "immutable": "^3.8.2",
+    "tsify": "^5.0.0",
+    "typescript": "^3.9.7",
     "xstream": "11.12"
   },
   "devDependencies": {
     "@babel/helper-create-regexp-features-plugin": "^7.7.4",
     "@babel/plugin-transform-object-assign": "*",
     "@babel/preset-env": "7.1.0",
+    "@babel/preset-typescript": "^7.10.4",
     "@babel/register": "^7.10.5",
+    "@types/node": "^14.0.27",
     "babelify": "^9.0.0",
     "browserify": "16.5.x",
     "browserify-hmr": "^0.4.1",
@@ -25,9 +30,10 @@
     "watchify": "^3.11.1"
   },
   "scripts": {
+    "build": "babel --out-file bundle.js main.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prebrowserify": "mkdirp dist",
-    "browserify": "browserify src/main.js -t babelify --outfile dist/main.js",
+    "browserify": "browserify src/main.ts -p [ tsify ] > dist/main.js",
     "start": "npm install && npm run browserify && echo 'OPEN index.html IN YOUR BROWSER'",
     "live": "watchify -t babelify -p browserify-hmr src/main.js -o dist/main.js"
   }

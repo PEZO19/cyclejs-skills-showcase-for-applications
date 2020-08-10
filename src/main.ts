@@ -5,9 +5,9 @@ import {makeJSONPDriver} from '@cycle/jsonp'
 import {timeDriver} from '@cycle/time'
 import app from './app'
 
-function preventDefaultSinkDriver(prevented$) {
+function preventDefaultSinkDriver(prevented$:any) {
   prevented$.addListener({
-    next: ev => {
+    next: (ev:any) => {
       ev.preventDefault()
       if (ev.type === 'blur') {
         ev.target.focus()
