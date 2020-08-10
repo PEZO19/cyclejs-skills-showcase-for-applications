@@ -5,22 +5,24 @@
   "author": "Andre Staltz",
   "license": "MIT",
   "dependencies": {
-    "@cycle/dom": "15.0.0-rc.2",
-    "@cycle/jsonp": "7.0.0-rc.1",
-    "@cycle/run": "1.0.0-rc.8",
-    "@cycle/time": "^0.8.0",
-    "immutable": "^3.7.4",
-    "xstream": "10.2"
+    "@babel/core": "^7.0.0",
+    "@cycle/dom": "22.7.0",
+    "@cycle/jsonp": "7.1.0",
+    "@cycle/run": "5.4.0",
+    "@cycle/time": "^0.20.0",
+    "immutable": "^3.8.2",
+    "xstream": "11.12"
   },
   "devDependencies": {
-    "browserify": "13.0.x",
-    "browserify-hmr": "^0.3.1",
-    "babel-preset-es2015": "^6.3.13",
-    "babel-plugin-transform-object-assign": "^6.3.13",
-    "babel-register": "^6.4.3",
-    "babelify": "^7.2.0",
-    "mkdirp": "0.5.x",
-    "watchify": "^3.7.0"
+    "@babel/helper-create-regexp-features-plugin": "^7.7.4",
+    "@babel/plugin-transform-object-assign": "*",
+    "@babel/preset-env": "7.1.0",
+    "@babel/register": "^7.10.5",
+    "babelify": "^9.0.0",
+    "browserify": "16.5.x",
+    "browserify-hmr": "^0.4.1",
+    "mkdirp": "1.0.x",
+    "watchify": "^3.11.1"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
