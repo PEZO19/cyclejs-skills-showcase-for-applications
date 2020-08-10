@@ -1,7 +1,7 @@
 import xs from 'xstream'
 import debounce from 'xstream/extra/debounce'
 import dropUntil from 'xstream/extra/dropUntil'
-import {ul, li, span, input, div, section, label} from '@cycle/dom'
+import {ul, li, span, input, div, section, label, button} from '@cycle/dom'
 import Immutable from 'immutable'
 
 const containerStyle = {
@@ -71,6 +71,10 @@ const resultListStyle = {
 const resultItemStyle = {
   padding: '3px 0 3px 8px',
 }
+const resultItemDeleteButtonStyle = {
+  padding: '5px',
+  margin: '0px 20px',
+}
 
 const LIGHT_GREEN = '#8FE8B4'
 
@@ -105,6 +109,8 @@ function intent(domSource, timeSource) {
   const ENTER_KEYCODE = 13
   const TAB_KEYCODE = 9
   
+  const deleteClick$   = domSource.select('.result-item-delete-button').events('click')
+  
   const input$         = domSource.select('.autocompleteable') .events('input')
   const keydown$       = domSource.select('.autocompleteable') .events('keydown')
   const itemHover$     = domSource.select('.autocomplete-item').events('mouseenter')
@@ -137,6 +143,8 @@ function intent(domSource, timeSource) {
       }})
       .filter(delta => delta !== 0),
     setHighlight$: itemHover$
+      .map(ev => parseInt(ev.target.dataset.index)),
+    deleteResultItem$: deleteClick$
       .map(ev => parseInt(ev.target.dataset.index)),
     keepFocusOnInput$:
       xs.merge(inputBlurToItem$, enterPressed$, tabPressed$),
@@ -177,17 +185,24 @@ function reducers(actions, suggestionsFromResponse$) {
       const results     = state.get('results')
       const hasHighlight = highlighted !== null
       const isMenuEmpty = suggestions.length === 0
-      const selected = suggestions[highlighted];
       if (isSelected && hasHighlight && !isMenuEmpty) {
+        const selected = suggestions[highlighted];
+        let highestId = results.length >= 1 ? results[results.length-1].id : -1;
         return state
           .set('selected'   , selected)
           .set('suggestions', [])
-          .set('results'    , [...results, selected])
+          .set('results'    , [...results, {selected, id: ++highestId }])
       } else {
         return state.set('selected', null)
       }
     })
 
+  const deleteResultReducer$ = actions.deleteResultItem$
+    .map(deletedResultItemId => function deleteResultReducer(state) {
+      const results = state.get('results')
+      return state.set('results', results.filter( ({id}) => id !== deletedResultItemId) )
+  })
+  
   const hideReducer$ = actions.quitAutocomplete$
     .mapTo(function hideReducer(state) {
       return state.set('suggestions', [])
@@ -212,6 +227,7 @@ function reducers(actions, suggestionsFromResponse$) {
     selectHighlightedReducer$,
     hideReducer$,
     comboBoxReducer$,
+    deleteResultReducer$,
   )
 }
 
@@ -262,11 +278,14 @@ function renderResultsList(results) {
   if (results === undefined || results.length === 0) { return ul('.result-list') }
   
   return ul('.result-list', {style: resultListStyle},
-    results.map(result =>
+    results.map((result) =>
       li('.result-item',
-         {style: resultItemStyle},
-         result
-      )
+        {style: resultItemStyle},
+        [ result.selected,
+          button('.result-item-delete-button',
+                 {style: resultItemDeleteButtonStyle, attrs: {'data-index': result.id}},
+                 "Delete")]
+      ),
     )
   )
 }
