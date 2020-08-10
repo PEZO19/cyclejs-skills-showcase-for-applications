@@ -64,6 +64,14 @@ const autocompleteItemStyle = {
   borderBottom: '1px solid #ccc',
 }
 
+const resultListStyle = {
+  padding: '3px 0 3px 8px',
+}
+
+const resultItemStyle = {
+  padding: '3px 0 3px 8px',
+}
+
 const LIGHT_GREEN = '#8FE8B4'
 
 /**
@@ -141,7 +149,7 @@ function intent(domSource, timeSource) {
   }
 }
 
-function reducers(actions) {
+function reducers(actions, suggestionsFromResponse$) {
   const moveHighlightReducer$ = actions.moveHighlight$
     .map(delta => function moveHighlightReducer(state) {
       const suggestions = state.get('suggestions')
@@ -163,15 +171,18 @@ function reducers(actions) {
   const selectHighlightedReducer$ = actions.selectHighlighted$
     .mapTo(xs.of(true, false))
     .flatten()
-    .map(selected => function selectHighlightedReducer(state) {
+    .map(isSelected => function selectHighlightedReducer(state) {
       const suggestions = state.get('suggestions')
       const highlighted = state.get('highlighted')
+      const results     = state.get('results')
       const hasHighlight = highlighted !== null
       const isMenuEmpty = suggestions.length === 0
-      if (selected && hasHighlight && !isMenuEmpty) {
+      const selected = suggestions[highlighted];
+      if (isSelected && hasHighlight && !isMenuEmpty) {
         return state
-          .set('selected', suggestions[highlighted])
+          .set('selected'   , selected)
           .set('suggestions', [])
+          .set('results'    , [...results, selected])
       } else {
         return state.set('selected', null)
       }
@@ -181,29 +192,35 @@ function reducers(actions) {
     .mapTo(function hideReducer(state) {
       return state.set('suggestions', [])
     })
-
+  
+  const comboBoxReducer$ = actions.wantsSuggestions$
+    .map(wants =>
+          suggestionsFromResponse$.map(suggestions => wants ? suggestions : [])
+    )
+    .flatten()
+    .startWith([])
+    .map(suggestions =>
+          function comboBoxReducer(state) {
+            return state.set('highlighted', null)
+                        .set('selected'   , null)
+                        .set("suggestions", suggestions)
+    })
+  
   return xs.merge(
     moveHighlightReducer$,
     setHighlightReducer$,
     selectHighlightedReducer$,
-    hideReducer$
+    hideReducer$,
+    comboBoxReducer$,
   )
 }
 
 function model(suggestionsFromResponse$, actions) {
-  const reducer$ = reducers(actions)
+  const reducer$ = reducers(actions, suggestionsFromResponse$)
 
-  const state$ = actions.wantsSuggestions$
-    .map(accepted =>
-      suggestionsFromResponse$.map(suggestions => accepted ? suggestions : [])
-    )
-    .flatten()
-    .startWith([])
-    .map(suggestions => Immutable.Map(
-      {suggestions, highlighted: null, selected: null}
-    ))
-    .map(state => reducer$.fold((acc, reducer) => reducer(acc), state))
-    .flatten()
+  const state$ = reducer$.fold((acc, reducer) => reducer(acc), Immutable.Map(
+    {suggestions:[], highlighted: null, selected: null, results: []}
+  ))
 
   return state$
 }
@@ -241,16 +258,33 @@ function renderComboBox({suggestions, highlighted, selected}) {
   ])
 }
 
+function renderResultsList(results) {
+  if (results === undefined || results.length === 0) { return ul('.result-list') }
+  
+  return ul('.result-list', {style: resultListStyle},
+    results.map(result =>
+      li('.result-item',
+         {style: resultItemStyle},
+         result
+      )
+    )
+  )
+}
+
 function view(state$) {
   return state$.map(state => {
     const suggestions = state.get('suggestions')
     const highlighted = state.get('highlighted')
-    const selected = state.get('selected')
+    const selected    = state.get('selected')
+    const results     = state.get('results')
     return (
       div('.container', {style: containerStyle}, [
         section({style: sectionStyle}, [
           label('.search-label', {style: searchLabelStyle}, 'Query:'),
           renderComboBox({suggestions, highlighted, selected})
+        ]),
+        section({style: sectionStyle}, [
+          renderResultsList(results)
         ]),
         section({style: sectionStyle}, [
           label({style: searchLabelStyle}, 'Some field:'),
