@@ -5,29 +5,29 @@
   "author": "Andre Staltz",
   "license": "MIT",
   "dependencies": {
-    "@babel/core": "^7.0.0",
     "@cycle/dom": "22.7.0",
     "@cycle/jsonp": "7.1.0",
     "@cycle/run": "5.4.0",
     "@cycle/time": "^0.20.0",
-    "@types/browserify": "^12.0.36",
     "@types/jsonp": "^0.2.0",
     "immutable": "^3.8.2",
-    "tsify": "^5.0.0",
-    "typescript": "^3.9.7",
     "xstream": "11.12"
   },
   "devDependencies": {
+    "@babel/core": "^7.0.0",
     "@babel/helper-create-regexp-features-plugin": "^7.7.4",
     "@babel/plugin-transform-object-assign": "*",
     "@babel/preset-env": "7.1.0",
     "@babel/preset-typescript": "^7.10.4",
     "@babel/register": "^7.10.5",
+    "@types/browserify": "^12.0.36",
     "@types/node": "^14.0.27",
     "babelify": "^9.0.0",
     "browserify": "16.5.x",
     "browserify-hmr": "^0.4.1",
     "mkdirp": "1.0.x",
+    "tsify": "^5.0.0",
+    "typescript": "^3.9.7",
     "watchify": "^3.11.1"
   },
   "scripts": {
