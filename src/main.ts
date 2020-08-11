@@ -1,16 +1,16 @@
-import xs from 'xstream'
+import xs, {Stream} from 'xstream'
 import {run} from '@cycle/run'
 import {makeDOMDriver} from '@cycle/dom'
 import {makeJSONPDriver} from '@cycle/jsonp'
 import {timeDriver} from '@cycle/time'
 import app from './app'
 
-function preventDefaultSinkDriver(prevented$:any) {
+function preventDefaultSinkDriver(prevented$: Stream<Event>) {
   prevented$.addListener({
-    next: (ev:any) => {
+    next: (ev) => {
       ev.preventDefault()
       if (ev.type === 'blur') {
-        ev.target.focus()
+        (ev.target as HTMLElement).focus()
       }
     },
     error: () => {},
