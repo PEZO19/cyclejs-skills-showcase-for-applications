@@ -302,7 +302,7 @@ function renderComboBox(
         style: autocompleteableStyle,
         attrs: {type: 'text'},
         hook: {
-          update: (old, {elm}) => {
+          update: (old:any, {elm}:{elm:any}) => {
             if (selected !== null) {
               elm.value = selected
             }
@@ -360,7 +360,7 @@ const networking = {
   
   processResponses(JSONP : Stream<ResponseStream>) : Stream<string[]> {
     return JSONP.filter(res$ => res$.request.indexOf(BASE_URL) === 0)
-      .flatten<ResponseStream>()
+      .flatten()
       .map(res => res[1])
   },
 
