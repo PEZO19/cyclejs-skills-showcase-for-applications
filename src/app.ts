@@ -9,28 +9,43 @@ import {StateSource, Reducer, makeCollection} from '@cycle/state';
 import isolate from '@cycle/isolate';
 
 const containerStyle = {
-  background: '#EFEFEF',
+  backgroundColor: 'transparent',
   padding: '5px',
+  display: 'block',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingTop: '300px'
 }
 
 const sectionStyle = {
   marginBottom: '10px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexDirection: 'column',
 }
 
 const searchLabelStyle = {
-  display: 'inline-block',
-  width: '100px',
-  textAlign: 'right',
+  display: 'block',
+  textAlign: 'center',
+  fontSize: '40px',
+  color: 'white',
+  fontWeight: 'bold',
+  marginBottom: '20px',
 }
 
 const comboBoxStyle = {
   position: 'relative',
-  display: 'inline-block',
+  display: 'block',
   width: '300px',
 }
 
 const inputTextStyle = {
-  padding: '5px',
+  padding: '3px 0 3px 14px',
+  fontSize: '25px',
+  height: '44px',
+  borderRadius: '12px',
+  borderColor: 'white',
 }
 
 const autocompleteableStyle = Object.assign({}, inputTextStyle, {
@@ -42,7 +57,7 @@ const autocompleteMenuStyle = {
   position: 'absolute',
   left: '0px',
   right: '0px',
-  top: '25px',
+  top: '44px',
   zIndex: '999',
   listStyle: 'none',
   backgroundColor: 'white',
@@ -63,21 +78,30 @@ const autocompleteMenuStyle = {
 const autocompleteItemStyle = {
   cursor: 'pointer',
   listStyle: 'none',
-  padding: '3px 0 3px 8px',
+  padding: '5px 0 5px 14px',
   margin: '0',
   borderBottom: '1px solid #ccc',
 }
 
 const resultListStyle = {
-  padding: '3px 0 3px 8px',
+  listStyle: 'none',
 }
 
 const resultItemStyle = {
-  padding: '3px 0 3px 8px',
+  fontSize: '20px',
+  fontWeight: 'bold',
+  color: 'white',
+  listStyle: 'none',
+  margin: '20px',
 }
 const resultItemDeleteButtonStyle = {
   padding: '5px',
   margin: '0px 20px',
+  backgroundColor: 'transparent',
+  backgroundRepeat:'no-repeat',
+  border: '2px solid white',
+  color: 'white',
+  borderRadius: '5px',
 }
 
 const LIGHT_GREEN = '#8FE8B4'
@@ -306,16 +330,16 @@ function view(state$: Stream<State>, resultListDOM$: Stream<VNode>) : MemoryStre
     return (
       div('.container', {style: containerStyle}, [
         section({style: sectionStyle}, [
-          label('.search-label', {style: searchLabelStyle}, 'Query:'),
+          label('.search-label', {style: searchLabelStyle}, 'Query'),
           renderComboBox({suggestions, highlighted, selected})
         ]),
         section({style: sectionStyle}, [
           resultListDOM
         ]),
-        section({style: sectionStyle}, [
-          label({style: searchLabelStyle}, 'Some field:'),
-          input({style: inputTextStyle, attrs: {type: 'text'}})
-        ])
+        // section({style: sectionStyle}, [
+        //   label({style: searchLabelStyle}, 'Some field:'),
+        //   input({style: inputTextStyle, attrs: {type: 'text'}})
+        // ])
       ])
     )
   })
