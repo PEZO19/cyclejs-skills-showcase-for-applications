@@ -140,6 +140,7 @@ interface DefinedObject {
 interface Actions {
   search$:            Stream<string>,
   moveHighlight$:     Stream<1 | -1>,
+  keyboardMove$:      Stream<KeyboardEvent>,
   setHighlight$:      Stream<number>
   keepFocusOnInput$:  Stream<Event | KeyboardEvent>
   selectHighlighted$: Stream<Event | KeyboardEvent>
@@ -158,16 +159,18 @@ function intent(domSource: MainDOMSource, timeSource: TimeSource) : Actions {
   const ENTER_KEYCODE = 13
   const TAB_KEYCODE   = 9
   
-  const keydown$       : Stream<KeyboardEvent> = domSource.select('.autocompleteable')         .events('keydown')
-  const input$         : Stream<Event>         = domSource.select('.autocompleteable')         .events('input')
-  const itemHover$     : Stream<Event>         = domSource.select('.autocomplete-item')        .events('mouseenter')
-  const itemMouseDown$ : Stream<Event>         = domSource.select('.autocomplete-item')        .events('mousedown')
-  const itemMouseUp$   : Stream<Event>         = domSource.select('.autocomplete-item')        .events('mouseup')
-  const inputFocus$    : Stream<Event>         = domSource.select('.autocompleteable')         .events('focus')
-  const inputBlur$     : Stream<Event>         = domSource.select('.autocompleteable')         .events('blur')
+  const keydown$       : Stream<KeyboardEvent> = domSource.select('.autocompleteable') .events('keydown')
+  const input$         : Stream<Event>         = domSource.select('.autocompleteable') .events('input')
+  const itemHover$     : Stream<Event>         = domSource.select('.autocomplete-item').events('mouseenter')
+  const itemMouseDown$ : Stream<Event>         = domSource.select('.autocomplete-item').events('mousedown')
+  const itemMouseUp$   : Stream<Event>         = domSource.select('.autocomplete-item').events('mouseup')
+  const inputFocus$    : Stream<Event>         = domSource.select('.autocompleteable') .events('focus')
+  const inputBlur$     : Stream<Event>         = domSource.select('.autocompleteable') .events('blur')
 
   const enterPressed$ = keydown$.filter(({keyCode}) => keyCode === ENTER_KEYCODE)
   const tabPressed$   = keydown$.filter(({keyCode}) => keyCode === TAB_KEYCODE)
+  const UpPressed$    = keydown$.filter(({keyCode}) => keyCode === UP_KEYCODE)
+  const DownPressed$  = keydown$.filter(({keyCode}) => keyCode === DOWN_KEYCODE)
   const clearField$   = input$  .filter(ev => (ev.target as HTMLInputElement).value.length === 0)
   const inputBlurToItem$      = inputBlur$.compose(between   (itemMouseDown$, itemMouseUp$))
   const inputBlurToElsewhere$ = inputBlur$.compose(notBetween(itemMouseDown$, itemMouseUp$))
@@ -180,6 +183,8 @@ function intent(domSource: MainDOMSource, timeSource: TimeSource) : Actions {
       .compose(between(inputFocus$, inputBlur$))
       .map(ev => (ev.target as HTMLInputElement).value)
       .filter(query => query.length > 0),
+    keyboardMove$:
+      xs.merge(UpPressed$, DownPressed$),
     moveHighlight$: keydown$
       .map(({keyCode}) => {
         switch (keyCode) {
@@ -362,7 +367,7 @@ const networking = {
 }
 
 function preventedEvents(actions : Actions, state$ : Stream<State>) : Stream<Event> {
-  return state$
+  const focusPrevent$ = state$
     .map(state =>
       actions.keepFocusOnInput$.map(event => {
         if (state.get('suggestions').length > 0 &&
@@ -376,6 +381,7 @@ function preventedEvents(actions : Actions, state$ : Stream<State>) : Stream<Eve
     )
     .flatten()
     .filter(someEvent)
+  return xs.merge(focusPrevent$, actions.keyboardMove$)
 }
 
 function someEvent(input: Event|null): input is Event {
