@@ -1,12 +1,13 @@
 import xs, {MemoryStream, Stream} from 'xstream'
 import debounce from 'xstream/extra/debounce'
 import dropUntil from 'xstream/extra/dropUntil'
-import {button, div, input, label, li, MainDOMSource, section, span, ul, VNode} from '@cycle/dom'
+import {div, input, label, li, MainDOMSource, section, span, ul, VNode} from '@cycle/dom'
 import Immutable from 'immutable'
 import {TimeSource} from "@cycle/time/lib/cjs/src/time-source";
 import {ResponseStream} from "@cycle/jsonp/src/index";
-import {StateSource, Reducer, makeCollection} from '@cycle/state';
+import {Reducer, StateSource} from '@cycle/state';
 import isolate from '@cycle/isolate';
+import {ListState, ResultList} from "./ResultList";
 
 const containerStyle = {
   backgroundColor: 'transparent',
@@ -83,18 +84,14 @@ const autocompleteItemStyle = {
   borderBottom: '1px solid #ccc',
 }
 
-const resultListStyle = {
-  listStyle: 'none',
-}
-
-const resultItemStyle = {
+export const resultItemStyle = {
   fontSize: '20px',
   fontWeight: 'bold',
   color: 'white',
   listStyle: 'none',
   margin: '20px',
 }
-const resultItemDeleteButtonStyle = {
+export const resultItemDeleteButtonStyle = {
   padding: '5px',
   margin: '0px 20px',
   backgroundColor: 'transparent',
@@ -131,7 +128,7 @@ function notBetween<T>(first: Stream<any>, second: Stream<any>): (so: Stream<T>)
   )
 }
 
-interface DefinedObject {
+export interface DefinedObject {
   // instead [name: string]: string | undefined;
   // making the compiler happy without nostrict mode
   [name: string]: string;
@@ -148,7 +145,7 @@ interface Actions {
   quitAutocomplete$:  Stream<Event>
 }
 
-interface Result {
+export interface Result {
   selected: string
   id: number
 }
@@ -402,75 +399,7 @@ export interface Sinks {
   state: Stream<Reducer<State>>;
 }
 
-type State = Immutable.Map<string, any> // keys: 'suggestions' 'highlighted' 'results' 'selected'
-type ListState = ItemState[]
-type ItemState = Result
-
-interface ListSources {
-  DOM: MainDOMSource,
-  state: StateSource<ListState>;
-}
-
-interface ItemSources {
-  DOM: MainDOMSource,
-  state: StateSource<ItemState>;
-}
-
-type ListSinks = any
-type ItemSinks = any
-
-function ResultItem(sources : ItemSources) : ItemSinks {
-  const state$: Stream<ItemState> = sources.state.stream;
-  
-  const deleteClick$: Stream<Event> = sources.DOM.select('.result-item-delete-button').events('click')
-  const itemActions = {deleteResultItem$: deleteClick$.map(ev => parseInt(((ev.target as HTMLInputElement).dataset as DefinedObject).index))}
-  
-  const deleteResultReducer$ = itemActions.deleteResultItem$
-    .map((deletedResultItemId: number) => function deleteResultReducer(itemState: ItemState): ItemState | undefined {
-      return itemState.id === deletedResultItemId ? undefined : itemState;
-    })
-  
-  const $vtree = state$.map((result: Result) =>
-    li('.result-item',
-      {style: resultItemStyle},
-      [result.selected,
-        button('.result-item-delete-button',
-          {
-            style: resultItemDeleteButtonStyle,
-            attrs: {'data-index': result.id}
-          },
-          "Delete")]
-    ),
-  )
-  
-  return {
-    state: deleteResultReducer$,
-    DOM: $vtree
-  }
-}
-
-function ResultList(sources : ListSources) : ListSinks {
-  
-  const List = makeCollection({
-    item: ResultItem,
-    itemKey: (childState, index) => String(index),
-    itemScope: key => key,
-    collectSinks: instances => {
-      return {
-        state: instances.pickMerge('state'),
-        DOM:   instances.pickCombine('DOM').map(combinedItemsVNodes => ul('.result-list', resultListStyle, combinedItemsVNodes))
-      }
-    }
-  })
-  
-  const resultItemsSinks = List(sources)
-  const reducer$ = resultItemsSinks.state
-  
-  return {
-    state: reducer$,
-    DOM: resultItemsSinks.DOM
-  }
-}
+export type State = Immutable.Map<string, any> // keys: 'suggestions' 'highlighted' 'results' 'selected'
 
 export default function app(sources : Sources) : Sinks {
   const state$ : Stream<State> = sources.state.stream;
