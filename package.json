@@ -6,8 +6,10 @@
   "license": "MIT",
   "dependencies": {
     "@cycle/dom": "22.7.0",
+    "@cycle/isolate": "^5.2.0",
     "@cycle/jsonp": "7.1.0",
     "@cycle/run": "5.4.0",
+    "@cycle/state": "^1.4.0",
     "@cycle/time": "^0.20.0",
     "@types/jsonp": "^0.2.0",
     "immutable": "^3.8.2",

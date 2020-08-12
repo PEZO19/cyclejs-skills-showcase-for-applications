@@ -5,6 +5,8 @@ import {button, div, input, label, li, MainDOMSource, section, span, ul, VNode} 
 import Immutable from 'immutable'
 import {TimeSource} from "@cycle/time/lib/cjs/src/time-source";
 import {ResponseStream} from "@cycle/jsonp/src/index";
+import {StateSource, Reducer, makeCollection} from '@cycle/state';
+import isolate from '@cycle/isolate';
 
 const containerStyle = {
   background: '#EFEFEF',
@@ -115,15 +117,11 @@ interface Actions {
   search$:            Stream<string>,
   moveHighlight$:     Stream<1 | -1>,
   setHighlight$:      Stream<number>
-  deleteResultItem$:  Stream<number>
   keepFocusOnInput$:  Stream<Event | KeyboardEvent>
   selectHighlighted$: Stream<Event | KeyboardEvent>
   wantsSuggestions$:  Stream<boolean>
   quitAutocomplete$:  Stream<Event>
 }
-
-type State = Immutable.Map<string, any>
-  // keys: 'suggestions' 'highlighted' 'results' 'selected'
 
 interface Result {
   selected: string
@@ -143,7 +141,6 @@ function intent(domSource: MainDOMSource, timeSource: TimeSource) : Actions {
   const itemMouseUp$   : Stream<Event>         = domSource.select('.autocomplete-item')        .events('mouseup')
   const inputFocus$    : Stream<Event>         = domSource.select('.autocompleteable')         .events('focus')
   const inputBlur$     : Stream<Event>         = domSource.select('.autocompleteable')         .events('blur')
-  const deleteClick$   : Stream<Event>         = domSource.select('.result-item-delete-button').events('click')
 
   const enterPressed$ = keydown$.filter(({keyCode}) => keyCode === ENTER_KEYCODE)
   const tabPressed$   = keydown$.filter(({keyCode}) => keyCode === TAB_KEYCODE)
@@ -169,8 +166,6 @@ function intent(domSource: MainDOMSource, timeSource: TimeSource) : Actions {
       .filter(notZero),
     setHighlight$: itemHover$
       .map(ev => parseInt(((ev.target as HTMLInputElement).dataset as DefinedObject).index)),
-    deleteResultItem$: deleteClick$
-      .map(ev => parseInt(((ev.target as HTMLInputElement).dataset as DefinedObject).index)),
     keepFocusOnInput$:
       xs.merge(inputBlurToItem$, enterPressed$, tabPressed$),
     selectHighlighted$:
@@ -186,9 +181,7 @@ function notZero(n: -1 | 0 | 1): n is (-1 | 1) {
   return n !== 0;
 }
 
-type Reducer = (state: State) => State;
-
-function reducers(actions : Actions, suggestionsFromResponse$ : Stream<string[]>): Stream<Reducer> {
+function reducers(actions : Actions, suggestionsFromResponse$ : Stream<string[]>): Stream<Reducer<State>> {
   
   const moveHighlightReducer$ = actions.moveHighlight$
     .map(delta => function moveHighlightReducer(state : State) : State {
@@ -229,12 +222,6 @@ function reducers(actions : Actions, suggestionsFromResponse$ : Stream<string[]>
       }
     })
 
-  const deleteResultReducer$ = actions.deleteResultItem$
-    .map((deletedResultItemId: number) => function deleteResultReducer(state : State) : State {
-      const results : Result[] = state.get('results')
-      return state.set('results', results.filter( ({id}) => id !== deletedResultItemId) )
-  })
-  
   const hideReducer$ = actions.quitAutocomplete$
     .mapTo(function hideReducer(state : State) : State {
       return state.set('suggestions', [])
@@ -259,18 +246,16 @@ function reducers(actions : Actions, suggestionsFromResponse$ : Stream<string[]>
     selectHighlightedReducer$,
     hideReducer$,
     comboBoxReducer$,
-    deleteResultReducer$,
   )
 }
 
-function model(suggestionsFromResponse$ : Stream<string[]>, actions : Actions) : MemoryStream<State> {
-  const reducer$ : Stream<Reducer>     = reducers(actions, suggestionsFromResponse$)
-  const state$   : MemoryStream<State> =
-    reducer$.fold((acc: State, reducer: Reducer) => reducer(acc), Immutable.Map({ suggestions: [],
-                                                                                  highlighted: null,
-                                                                                  selected   : null,
-                                                                                  results    : []   }))
-  return state$
+function model(suggestionsFromResponse$ : Stream<string[]>, actions : Actions) : Stream<Reducer<State>> {
+  const init$ = xs.of<Reducer<State>>(() => Immutable.Map({ suggestions: [],
+                                                            highlighted: null,
+                                                            selected   : null,
+                                                            results    : []   }));
+  const reducer$ : Stream<Reducer<State>> = reducers(actions, suggestionsFromResponse$)
+  return xs.merge(init$, reducer$);
 }
 
 function renderAutocompleteMenu(
@@ -313,28 +298,11 @@ function renderComboBox(
     ])
 }
 
-function renderResultsList(results: Result[]) : VNode {
-  if (results === undefined || results.length === 0) { return ul('.result-list') }
-  
-  return ul('.result-list', {style: resultListStyle},
-    results.map((result : Result) =>
-      li('.result-item',
-        {style: resultItemStyle},
-        [ result.selected,
-          button('.result-item-delete-button',
-                 {style: resultItemDeleteButtonStyle, attrs: {'data-index': result.id}},
-                 "Delete")]
-      ),
-    )
-  )
-}
-
-function view(state$ : MemoryStream<State>) : MemoryStream<VNode> {
-  return state$.map(state => {
+function view(state$: Stream<State>, resultListDOM$: Stream<VNode>) : MemoryStream<VNode> {
+  return xs.combine(state$, resultListDOM$).map(([state, resultListDOM]) => {
     const suggestions : string[] = state.get('suggestions')
     const highlighted : number   = state.get('highlighted')
     const selected    : string   = state.get('selected')
-    const results     : Result[] = state.get('results')
     return (
       div('.container', {style: containerStyle}, [
         section({style: sectionStyle}, [
@@ -342,7 +310,7 @@ function view(state$ : MemoryStream<State>) : MemoryStream<VNode> {
           renderComboBox({suggestions, highlighted, selected})
         ]),
         section({style: sectionStyle}, [
-          renderResultsList(results)
+          resultListDOM
         ]),
         section({style: sectionStyle}, [
           label({style: searchLabelStyle}, 'Some field:'),
@@ -369,7 +337,7 @@ const networking = {
   },
 }
 
-function preventedEvents(actions : Actions, state$ : MemoryStream<State>) : Stream<Event> {
+function preventedEvents(actions : Actions, state$ : Stream<State>) : Stream<Event> {
   return state$
     .map(state =>
       actions.keepFocusOnInput$.map(event => {
@@ -394,24 +362,107 @@ export interface Sources {
   Time: TimeSource,
   DOM: MainDOMSource,
   JSONP: Stream<ResponseStream>,
+  state: StateSource<State>;
 }
 
 export interface Sinks {
-  DOM: MemoryStream<VNode>
+  DOM: Stream<VNode>
   preventDefault: Stream<Event>
   JSONP: Stream<string>
+  state: Stream<Reducer<State>>;
+}
+
+type State = Immutable.Map<string, any> // keys: 'suggestions' 'highlighted' 'results' 'selected'
+type ListState = ItemState[]
+type ItemState = Result
+
+interface ListSources {
+  DOM: MainDOMSource,
+  state: StateSource<ListState>;
+}
+
+interface ItemSources {
+  DOM: MainDOMSource,
+  state: StateSource<ItemState>;
+}
+
+type ListSinks = any
+type ItemSinks = any
+
+function ResultItem(sources : ItemSources) : ItemSinks {
+  const state$: Stream<ItemState> = sources.state.stream;
+  
+  const deleteClick$: Stream<Event> = sources.DOM.select('.result-item-delete-button').events('click')
+  const itemActions = {deleteResultItem$: deleteClick$.map(ev => parseInt(((ev.target as HTMLInputElement).dataset as DefinedObject).index))}
+  
+  const deleteResultReducer$ = itemActions.deleteResultItem$
+    .map((deletedResultItemId: number) => function deleteResultReducer(itemState: ItemState): ItemState | undefined {
+      return itemState.id === deletedResultItemId ? undefined : itemState;
+    })
+  
+  const $vtree = state$.map((result: Result) =>
+    li('.result-item',
+      {style: resultItemStyle},
+      [result.selected,
+        button('.result-item-delete-button',
+          {
+            style: resultItemDeleteButtonStyle,
+            attrs: {'data-index': result.id}
+          },
+          "Delete")]
+    ),
+  )
+  
+  return {
+    state: deleteResultReducer$,
+    DOM: $vtree
+  }
+}
+
+function ResultList(sources : ListSources) : ListSinks {
+  
+  const List = makeCollection({
+    item: ResultItem,
+    itemKey: (childState, index) => String(index),
+    itemScope: key => key,
+    collectSinks: instances => {
+      return {
+        state: instances.pickMerge('state'),
+        DOM:   instances.pickCombine('DOM').map(combinedItemsVNodes => ul('.result-list', resultListStyle, combinedItemsVNodes))
+      }
+    }
+  })
+  
+  const resultItemsSinks = List(sources)
+  const reducer$ = resultItemsSinks.state
+  
+  return {
+    state: reducer$,
+    DOM: resultItemsSinks.DOM
+  }
 }
 
 export default function app(sources : Sources) : Sinks {
+  const state$ : Stream<State> = sources.state.stream;
+  
+  const listLens = {
+    get: (state: State) => state.get("results"),
+    set: (state: State, listState: ListState) => (state.set("results", [...listState] ))
+  };
+  const resultListSink = isolate(ResultList, {state: listLens})(sources)
+  
   const suggestionsFromResponse$ : Stream<string[]> = networking.processResponses(sources.JSONP)
-  const actions : Actions             = intent(sources.DOM, sources.Time)
-  const state$  : MemoryStream<State> = model(suggestionsFromResponse$, actions)
-  const vtree$  : MemoryStream<VNode> = view(state$)
+  const actions   : Actions                = intent(sources.DOM, sources.Time)
+  const pReducer$ : Stream<Reducer<State>> = model(suggestionsFromResponse$, actions)
+  const vtree$    : MemoryStream<VNode>    = view(state$, resultListSink.DOM)
   const prevented$ : Stream<Event> = preventedEvents(actions, state$)
   const searchRequest$ : Stream<string> = networking.generateRequests(actions.search$)
+  const reducer$ = xs.merge(resultListSink.state as Stream<Reducer<State>>, pReducer$);
+  
   return {
     DOM: vtree$,
     preventDefault: prevented$,
     JSONP: searchRequest$,
+    state: reducer$,
   }
 }

@@ -4,6 +4,7 @@ import {makeDOMDriver} from '@cycle/dom'
 import {makeJSONPDriver} from '@cycle/jsonp'
 import {timeDriver} from '@cycle/time'
 import app from './app'
+import { withState } from '@cycle/state';
 
 function preventDefaultSinkDriver(prevented$: Stream<Event>) {
   prevented$.addListener({
@@ -19,8 +20,8 @@ function preventDefaultSinkDriver(prevented$: Stream<Event>) {
   return xs.empty()
 }
 
-
-run(app, {
+const wrappedMain = withState(app);
+run(wrappedMain, {
   DOM: makeDOMDriver('#main-container'),
   JSONP: makeJSONPDriver(),
   preventDefault: preventDefaultSinkDriver,
