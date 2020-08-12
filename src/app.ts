@@ -162,7 +162,6 @@ function intent(domSource: MainDOMSource, timeSource: TimeSource) : Actions {
   const keydown$       : Stream<KeyboardEvent> = domSource.select('.autocompleteable') .events('keydown')
   const input$         : Stream<Event>         = domSource.select('.autocompleteable') .events('input')
   const itemHover$     : Stream<Event>         = domSource.select('.autocomplete-item').events('mouseenter')
-  const itemClick$     : Stream<Event>         = domSource.select('.autocomplete-item').events('click')
   const itemMouseDown$ : Stream<Event>         = domSource.select('.autocomplete-item').events('mousedown')
   const itemMouseUp$   : Stream<Event>         = domSource.select('.autocomplete-item').events('mouseup')
   const inputFocus$    : Stream<Event>         = domSource.select('.autocompleteable') .events('focus')
@@ -194,7 +193,7 @@ function intent(domSource: MainDOMSource, timeSource: TimeSource) : Actions {
           default:           return 0
       }})
       .filter(notZero),
-    setHighlight$: xs.merge(itemHover$, itemClick$)
+    setHighlight$: xs.merge(itemHover$, itemMouseDown$)
       .map(ev => parseInt(((ev.target as HTMLInputElement).dataset as DefinedObject).index)),
     keepFocusOnInput$:
       xs.merge(inputBlurToItem$, enterPressed$, tabPressed$),
