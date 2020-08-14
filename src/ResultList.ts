@@ -1,6 +1,7 @@
 import {makeCollection, StateSource} from "@cycle/state";
 import {MainDOMSource, ul} from "@cycle/dom";
 import {ItemState, ResultItem} from "./ResultItem";
+import {TimeSource} from "@cycle/time/lib/cjs/src/time-source";
 
 export const resultListStyle = {
   listStyle: 'none',
@@ -8,6 +9,7 @@ export const resultListStyle = {
 export type ListState = ItemState[]
 
 export interface ListSources {
+  Time: TimeSource,
   DOM: MainDOMSource,
   state: StateSource<ListState>;
 }

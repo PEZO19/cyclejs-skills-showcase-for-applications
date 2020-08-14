@@ -15,7 +15,7 @@ const containerStyle = {
   display: 'block',
   alignItems: 'center',
   justifyContent: 'center',
-  paddingTop: '300px'
+  marginTop: '15%'
 }
 
 const sectionStyle = {
@@ -84,13 +84,19 @@ const autocompleteItemStyle = {
   borderBottom: '1px solid #ccc',
 }
 
-export const resultItemStyle = {
-  fontSize: '20px',
-  fontWeight: 'bold',
-  color: 'white',
-  listStyle: 'none',
-  margin: '20px',
+export function resultItemStyle(opacity : number, top : number) {
+  return {
+    position: 'relative',
+    fontSize: '20px',
+    fontWeight: 'bold',
+    color: 'white',
+    listStyle: 'none',
+    margin: '20px',
+    opacity: `${opacity}%`,
+    top:     `${top}px`,
+  }
 }
+
 export const resultItemDeleteButtonStyle = {
   padding: '5px',
   margin: '0px 20px',
@@ -324,7 +330,7 @@ function renderComboBox(
     ])
 }
 
-function view(state$: Stream<State>, resultListDOM$: Stream<VNode>) : MemoryStream<VNode> {
+function view(state$: Stream<State>, resultListDOM$: Stream<VNode>, timeSource: TimeSource) : MemoryStream<VNode> {
   return xs.combine(state$, resultListDOM$).map(([state, resultListDOM]) => {
     const suggestions : string[] = state.get('suggestions')
     const highlighted : number   = state.get('highlighted')
@@ -413,7 +419,7 @@ export default function app(sources : Sources) : Sinks {
   const suggestionsFromResponse$ : Stream<string[]> = networking.processResponses(sources.JSONP)
   const actions   : Actions                = intent(sources.DOM, sources.Time)
   const pReducer$ : Stream<Reducer<State>> = model(suggestionsFromResponse$, actions)
-  const vtree$    : MemoryStream<VNode>    = view(state$, resultListSink.DOM)
+  const vtree$    : MemoryStream<VNode>    = view(state$, resultListSink.DOM, sources.Time)
   const prevented$ : Stream<Event> = preventedEvents(actions, state$)
   const searchRequest$ : Stream<string> = networking.generateRequests(actions.search$)
   const reducer$ = xs.merge(resultListSink.state as Stream<Reducer<State>>, pReducer$);
